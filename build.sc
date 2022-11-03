@@ -4,6 +4,9 @@ import scalafmt._
 import publish._
 import scalanativelib._
 import mill.scalanativelib.api.{LTO, ReleaseMode}
+
+val isMacM1 = System.getProperty("os.name") == "Mac OS X" && System.getProperty("os.arch") == "aarch64"
+
 object v {
   val upickle = ivy"com.lihaoyi::upickle:1.4.4"
   val oslib = ivy"com.lihaoyi::os-lib:0.8.1"
@@ -27,22 +30,27 @@ object gitakc extends Module {
     def scalaVersion = crossScalaVersion
     def scalaNativeVersion = "0.4.3"
     def releaseMode = ReleaseMode.ReleaseFull
-    def nativeLTO = LTO.Full
-    def nativeLinkingOptions = T {super.nativeLinkingOptions() ++ Seq("-fuse-ld=lld")}
+    // disabled LTO on Mac M1 due to linker error:
+    // ld64.lld: error: -mllvm: lld: Unknown command line argument '-disable-aligned-alloc-awareness=1'
+    def nativeLTO = if (isMacM1) LTO.None else LTO.Full
+    def nativeLinkingOptions = T { super.nativeLinkingOptions() ++ Seq("-fuse-ld=lld") }
     override def ivyDeps = super.ivyDeps() ++ Agg(v.upickleNative, v.oslibNative, v.sttpNative)
   }
 
   trait GeneralModule extends ScalaModule with PublishModule {
     m =>
     override def millSourcePath = super.millSourcePath / os.up / os.up
-    def publishVersion = "0.1"
+    def publishVersion = "0.1.1"
     def pomSettings = PomSettings(
       description = artifactName(),
-      organization = "me.jiuyang",
-      url = "https://jiuyang.me",
+      organization = "cn.edu.zju.xlab",
+      url = "https://xlab.zju.edu.cn/",
       licenses = Seq(License.`Apache-2.0`),
-      versionControl = VersionControl.github("sequencer", "gitakc"),
-      developers = Seq(Developer("sequencer", "Jiuyang Liu", "https://jiuyang.me/"))
+      versionControl = VersionControl.github("zjuxlab", "gitakc"),
+      developers = Seq(
+        Developer("sequencer", "Jiuyang Liu", "https://jiuyang.me/"),
+        Developer("zjuxlab", "ZJU XLab", "https://xlab.zju.edu.cn/")
+      )
     )
   }
 
